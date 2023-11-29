@@ -41,7 +41,9 @@ def setup_db(conn):
     # Create tables
     c.execute('''CREATE TABLE pokemon
                 (id integer primary key unique not null,
-                name text not null);''')
+                name text not null,
+                base_form int,
+                FOREIGN KEY (base_form) REFERENCES pokemon(id));''')
     
     c.execute('''CREATE TABLE games
                 (name text primary key unique not null);''')
@@ -86,19 +88,30 @@ def setup_db(conn):
 ### API Functions ###
 
 # Get all the necessary requests from the API
-# Flags: [pokemon, encounters]
-def get_requests(pokemon_id, flags = [True, True]):
+# Flags: [pokemon, encounters, pokemon-species]
+def get_requests(pokemon_id, flags = [True, True, True]):
     if flags[0]:
         request_pokemon = requests.get(BASE_URL + f'pokemon/{pokemon_id}').json()
         with open(f'requests/pokemon/{pokemon_id}.json', 'w') as outfile:
             json.dump(request_pokemon, outfile)
+
+        print(f'Pokemon {request_pokemon["name"]} done at {time.time() - start_time} seconds')
 
     if flags[1]:
         request_encounters = requests.get(BASE_URL + f'pokemon/{pokemon_id}/encounters').json()
         with open(f'requests/encounters/{pokemon_id}.json', 'w') as outfile:
             json.dump(request_encounters, outfile)
 
-    print(f'Pokemon {request_pokemon["name"]} done at {time.time() - start_time} seconds')
+        print(f'Encounters {pokemon_id} done at {time.time() - start_time} seconds')
+
+    if flags[2]:
+        request_pokemon_species = requests.get(BASE_URL + f'pokemon-species/{pokemon_id}').json()
+        with open(f'requests/pokemon_species/{pokemon_id}.json', 'w') as outfile:
+            json.dump(request_pokemon_species, outfile)
+
+        print(f'Pokemon Species {pokemon_id} done at {time.time() - start_time} seconds')
+
+    
     return
 
 ### JSON Functions ###
@@ -201,19 +214,31 @@ def parse_encounters_json(encounters):
 def insert_pokemon(conn, pokemon_id):
     c = conn.cursor()
 
-    pokemon = [pokemon_id, '']
+    pokemon = [pokemon_id, '', '']
 
     if OFFLINE_MODE:
         with open(f'requests/pokemon/{pokemon_id}.json') as json_file:
             request_pokemon = json.load(json_file)
 
+        with open(f'requests/pokemon_species/{pokemon_id}.json') as json_file:
+            request_pokemon_species = json.load(json_file)
+        
+
     else:
         request_pokemon = requests.get(BASE_URL + f'pokemon/{pokemon_id}').json()
+        request_pokemon_species = requests.get(BASE_URL + f'pokemon-species/{pokemon_id}').json()
 
     pokemon[1] = request_pokemon['name']
 
-    c.execute('''INSERT INTO pokemon (id, name)
-                VALUES (?, ?)''', pokemon)
+    # Check if it is a base form
+    if request_pokemon_species['evolves_from_species'] != None:
+        base_form_id = request_pokemon_species['evolves_from_species']['url'].split('/')[-2]
+
+        if int(base_form_id) <= 386:
+            pokemon[2] = base_form_id
+
+    c.execute('''INSERT INTO pokemon (id, name, base_form)
+                VALUES (?, ?, ?)''', pokemon)
 
     conn.commit()
 
@@ -234,13 +259,13 @@ def insert_encounters(conn, pokemon_id):
         for i in range(len(encounter['version_details'])):
             version_details = encounter['version_details'][i]
             if version_details['version']['name'] in gamelist:
+                # Get game
+                game_name = version_details['version']['name']
+
                 # Add location
                 location_name = encounter['location_area']['name']
                 c.execute('''INSERT OR IGNORE INTO locations (name)
                             VALUES (?)''', (location_name,))
-                
-                # Add game
-                game_name = version_details['version']['name']
 
                 # Add games_locations
                 c.execute('''INSERT OR IGNORE INTO games_locations (game_id, location_id)
@@ -255,12 +280,13 @@ def insert_encounters(conn, pokemon_id):
                                 version_details['encounter_details'][0]['max_level'], version_details['encounter_details'][0]['min_level'], 
                                 version_details['encounter_details'][0]['method']['name']]
 
+                # Check if there is a condition
                 if len(version_details['encounter_details'][0]['condition_values']) > 0:
                     encounter_data.append(version_details['encounter_details'][0]['condition_values'][0]['name'])
 
                 else:
                     encounter_data.append('')
-                    
+
                 c.execute('''INSERT INTO encounters (pokemon_id, game_id, location_id, chance, max_level, min_level, method, condition)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', encounter_data)
 
@@ -276,9 +302,9 @@ def remove_duplicates(appearences):
 
 ### Execution Functions ###
 
-def compose_offline_api():
+def compose_offline_api(flags = [True, True, True]):
     for i in range(1, 387):
-        get_requests(i)
+        get_requests(i, flags)
 
 def compose_test():
     test_pokedex = {}
@@ -305,6 +331,9 @@ def compose_pokedex():
 ### Main ###
 
 if __name__ == '__main__':
+    # compose_offline_api([False, False, False])
+
+    # SQLite
     conn = create_connection('db/sed.db')
     setup_db(conn)
 
@@ -314,7 +343,7 @@ if __name__ == '__main__':
 
     conn.close()
 
-    # compose_offline_api()
+    # JSON
     # compose_test()
     # compose_pokedex()
 
