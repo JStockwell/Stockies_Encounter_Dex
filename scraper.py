@@ -2,6 +2,8 @@ import requests, json, time, sqlite3
 
 from sqlite3 import Error
 
+### Global Variables ###
+
 start_time = time.time()
 
 BASE_URL = 'https://pokeapi.co/api/v2/'
@@ -10,7 +12,7 @@ OFFLINE_MODE = True
 pokedex_dict = {}
 gamelist = ['ruby', 'sapphire', 'emerald', 'firered', 'leafgreen']
 
-### DB ###
+### DB Functions ###
 
 def create_connection(db_file):
     """ create a database connection to a SQLite database """
@@ -63,7 +65,25 @@ def setup_db(conn):
     # Save (commit) the changes
     conn.commit()
 
-### Functions ###
+### API Functions ###
+
+# Get all the necessary requests from the API
+# Flags: [pokemon, encounters]
+def get_requests(pokemon_id, flags = [True, True]):
+    if flags[0]:
+        request_pokemon = requests.get(BASE_URL + f'pokemon/{pokemon_id}').json()
+        with open(f'requests/pokemon/{pokemon_id}.json', 'w') as outfile:
+            json.dump(request_pokemon, outfile)
+
+    if flags[1]:
+        request_encounters = requests.get(BASE_URL + f'pokemon/{pokemon_id}/encounters').json()
+        with open(f'requests/encounters/{pokemon_id}.json', 'w') as outfile:
+            json.dump(request_encounters, outfile)
+
+    print(f'Pokemon {request_pokemon["name"]} done at {time.time() - start_time} seconds')
+    return
+
+### JSON Functions ###
 
 # From a Pokemon we need:
 # - Name DONE
@@ -73,20 +93,7 @@ def setup_db(conn):
 #   - Encounter methods
 #   - Encounter levels
 
-def get_requests(pokemon_id):
-    request_pokemon = requests.get(BASE_URL + f'pokemon/{pokemon_id}').json()
-    request_encounters = requests.get(BASE_URL + f'pokemon/{pokemon_id}/encounters').json()
-
-    with open(f'requests/pokemon/{pokemon_id}.json', 'w') as outfile:
-        json.dump(request_pokemon, outfile)
-
-    with open(f'requests/encounters/{pokemon_id}.json', 'w') as outfile:
-        json.dump(request_encounters, outfile)
-
-    print(f'Pokemon {request_pokemon["name"]} done at {time.time() - start_time} seconds')
-    return
-
-def get_pokemon_data(pokemon_id):
+def get_pokemon_data_json(pokemon_id):
     result = []
     result_set = {}
     
@@ -102,13 +109,15 @@ def get_pokemon_data(pokemon_id):
         request_encounters = requests.get(BASE_URL + f'pokemon/{pokemon_id}/encounters').json()
 
     result.append(request_pokemon['name'])
-    result_set = parse_encounters(request_encounters)
+    result_set = parse_encounters_json(request_encounters)
+
+    result.append(result_set)
 
     print(f'Pokemon {request_pokemon["name"]} done at {time.time() - start_time} seconds')
-    result.append(result_set)
+
     return result
 
-def parse_encounters(encounters):
+def parse_encounters_json(encounters):
     result = {}
 
     games = []
@@ -169,23 +178,22 @@ def parse_encounters(encounters):
 
     return result
 
-### AUX ###
+### Auxiliary Funtions ###
 
 def remove_duplicates(appearences):
         return list(dict.fromkeys(appearences))
 
-### MAIN ###
+### Execution Functions ###
 
 def compose_offline_api():
     for i in range(1, 387):
         get_requests(i)
 
-
 def compose_test():
     test_pokedex = {}
 
     for i in range(60, 70):
-        pokemon_data = get_pokemon_data(i)
+        pokemon_data = get_pokemon_data_json(i)
         test_pokedex[pokemon_data[0]] = pokemon_data[1]
 
     with open('output/test.json', 'w') as outfile:
@@ -197,12 +205,13 @@ def compose_pokedex():
     pokedex = {}
 
     for i in range(1, 387):
-        pokemon_data = get_pokemon_data(i)
+        pokemon_data = get_pokemon_data_json(i)
         pokedex[pokemon_data[0]] = pokemon_data[1]
 
     with open('output/pokedex.json', 'w') as outfile:
         json.dump(pokedex, outfile)
 
+### Main ###
 
 if __name__ == '__main__':
     conn = create_connection('db/sed.db')
