@@ -1,4 +1,4 @@
-import requests, json, time
+import requests, json, time, os
 
 start_time = time.time()
 
@@ -13,7 +13,7 @@ def remove_duplicates(appearences):
 # From a Pokemon we need:
 # - Name DONE
 #   - Game appearences DONE
-#   - Encounter locations
+#   - Encounter locations DONE
 #   - Encounter chances
 #   - Encounter methods
 #   - Encounter levels
@@ -28,7 +28,7 @@ def get_pokemon_data(pokemon_id):
     result.append(request_pokemon['name'])
     result_set = parse_encounters(request_encounters)
 
-
+    print(f'Pokemon {request_pokemon['name']} done at {time.time() - start_time} seconds')
     result.append(result_set)
     return result
 
@@ -117,7 +117,7 @@ def compose_pokedex():
     with open('output/pokedex.json', 'w') as outfile:
         json.dump(pokedex, outfile)
 
-# compose_test()
-compose_pokedex()
+compose_test()
+# compose_pokedex()
 
 print("--- %s seconds ---" % (time.time() - start_time))
