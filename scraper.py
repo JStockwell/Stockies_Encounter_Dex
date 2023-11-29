@@ -35,6 +35,8 @@ def setup_db(conn):
     c.execute('''DROP TABLE IF EXISTS encounters''')
     c.execute('''DROP TABLE IF EXISTS locations''')
     c.execute('''DROP TABLE IF EXISTS games''')
+    c.execute('''DROP TABLE IF EXISTS pokemon_games''')
+    c.execute('''DROP TABLE IF EXISTS games_locations''')
 
     # Create tables
     c.execute('''CREATE TABLE pokemon
@@ -48,8 +50,7 @@ def setup_db(conn):
                 (name text primary key unique not null);''')
     
     c.execute('''CREATE TABLE encounters
-                (id integer primary key unique not null,
-                pokemon_id integer not null,
+                (pokemon_id integer not null,
                 game_id integer not null,
                 location_id integer not null,
                 chance integer not null,
@@ -61,6 +62,23 @@ def setup_db(conn):
                 FOREIGN KEY (game_id) REFERENCES games(id),
                 FOREIGN KEY (location_id) REFERENCES locations(id));''')
     
+    # Many to many tables
+    c.execute('''CREATE TABLE pokemon_games
+                (pokemon_id integer not null,
+                game_id integer not null,
+                FOREIGN KEY (pokemon_id) REFERENCES pokemon(id),
+                FOREIGN KEY (game_id) REFERENCES games(id));''')
+    
+    c.execute('''CREATE TABLE games_locations
+                (game_id integer not null,
+                location_id integer not null,
+                FOREIGN KEY (game_id) REFERENCES games(id),
+                FOREIGN KEY (location_id) REFERENCES locations(id));''')
+    
+    
+    for game in gamelist:
+        c.execute('''INSERT OR IGNORE INTO games (name)
+                    VALUES (?);''', (game,))
 
     # Save (commit) the changes
     conn.commit()
@@ -178,6 +196,79 @@ def parse_encounters_json(encounters):
 
     return result
 
+### SQLite Functions ###
+
+def insert_pokemon(conn, pokemon_id):
+    c = conn.cursor()
+
+    pokemon = [pokemon_id, '']
+
+    if OFFLINE_MODE:
+        with open(f'requests/pokemon/{pokemon_id}.json') as json_file:
+            request_pokemon = json.load(json_file)
+
+    else:
+        request_pokemon = requests.get(BASE_URL + f'pokemon/{pokemon_id}').json()
+
+    pokemon[1] = request_pokemon['name']
+
+    c.execute('''INSERT INTO pokemon (id, name)
+                VALUES (?, ?)''', pokemon)
+
+    conn.commit()
+
+    print(f'Pokemon {pokemon[1]} inserted at {time.time() - start_time} seconds')
+    return
+
+def insert_encounters(conn, pokemon_id):
+    c = conn.cursor()
+
+    if OFFLINE_MODE:
+        with open(f'requests/encounters/{pokemon_id}.json') as json_file:
+            request_encounters = json.load(json_file)
+
+    else:
+        request_encounters = requests.get(BASE_URL + f'pokemon/{pokemon_id}/encounters').json()
+
+    for encounter in request_encounters:
+        for i in range(len(encounter['version_details'])):
+            version_details = encounter['version_details'][i]
+            if version_details['version']['name'] in gamelist:
+                # Add location
+                location_name = encounter['location_area']['name']
+                c.execute('''INSERT OR IGNORE INTO locations (name)
+                            VALUES (?)''', (location_name,))
+                
+                # Add game
+                game_name = version_details['version']['name']
+
+                # Add games_locations
+                c.execute('''INSERT OR IGNORE INTO games_locations (game_id, location_id)
+                            VALUES (?,?)''', (game_name, location_name))
+                
+                # Add pokemon_games
+                c.execute('''INSERT OR IGNORE INTO pokemon_games (pokemon_id, game_id)
+                            VALUES (?, ?)''', (pokemon_id, game_name))
+                
+                # Add encounter
+                encounter_data = [pokemon_id, game_name, location_name, version_details['encounter_details'][0]['chance'], 
+                                version_details['encounter_details'][0]['max_level'], version_details['encounter_details'][0]['min_level'], 
+                                version_details['encounter_details'][0]['method']['name']]
+
+                if len(version_details['encounter_details'][0]['condition_values']) > 0:
+                    encounter_data.append(version_details['encounter_details'][0]['condition_values'][0]['name'])
+
+                else:
+                    encounter_data.append('')
+                    
+                c.execute('''INSERT INTO encounters (pokemon_id, game_id, location_id, chance, max_level, min_level, method, condition)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', encounter_data)
+
+    conn.commit()
+
+    print(f'Locations inserted at {time.time() - start_time} seconds')
+    return
+
 ### Auxiliary Funtions ###
 
 def remove_duplicates(appearences):
@@ -216,6 +307,10 @@ def compose_pokedex():
 if __name__ == '__main__':
     conn = create_connection('db/sed.db')
     setup_db(conn)
+
+    for i in range(1, 387):
+        insert_pokemon(conn, i)
+        insert_encounters(conn, i)
 
     conn.close()
 
