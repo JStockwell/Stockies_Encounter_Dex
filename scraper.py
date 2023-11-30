@@ -85,6 +85,8 @@ def setup_db(conn):
     # Save (commit) the changes
     conn.commit()
 
+    compose_db(conn)
+
 ### API Functions ###
 
 # Get all the necessary requests from the API
@@ -115,14 +117,6 @@ def get_requests(pokemon_id, flags = [True, True, True]):
     return
 
 ### JSON Functions ###
-
-# From a Pokemon we need:
-# - Name DONE
-#   - Game appearences DONE
-#   - Encounter locations DONE
-#   - Encounter chances
-#   - Encounter methods
-#   - Encounter levels
 
 def get_pokemon_data_json(pokemon_id):
     result = []
@@ -298,43 +292,70 @@ def insert_encounters(conn, pokemon_id):
 def create_views(conn):
     c = conn.cursor()
 
-    c.execute('''DROP VIEW IF EXISTS pokemon_ruby''')
-    c.execute('''DROP VIEW IF EXISTS pokemon_sapphire''')
-    c.execute('''DROP VIEW IF EXISTS pokemon_emerald''')
-    c.execute('''DROP VIEW IF EXISTS pokemon_firered''')
-    c.execute('''DROP VIEW IF EXISTS pokemon_leafgreen''')
+    # Drop encounters per game views
+    c.execute('''DROP VIEW IF EXISTS encounters_ruby''')
+    c.execute('''DROP VIEW IF EXISTS encounters_sapphire''')
+    c.execute('''DROP VIEW IF EXISTS encounters_emerald''')
+    c.execute('''DROP VIEW IF EXISTS encounters_firered''')
+    c.execute('''DROP VIEW IF EXISTS encounters_leafgreen''')
 
-    # Create views
-    c.execute('''CREATE VIEW pokemon_ruby AS
+    # Create encounters per game views
+    c.execute('''CREATE VIEW encounters_ruby AS
                 SELECT pokemon.id, pokemon.name, encounters.location_id, encounters.chance, encounters.max_level, encounters.min_level, encounters.method, encounters.condition
                 FROM pokemon
                 INNER JOIN encounters ON pokemon.id = encounters.pokemon_id
                 WHERE encounters.game_id = 'ruby';''')
     
-    c.execute('''CREATE VIEW pokemon_sapphire AS
+    c.execute('''CREATE VIEW encounters_sapphire AS
                 SELECT pokemon.id, pokemon.name, encounters.location_id, encounters.chance, encounters.max_level, encounters.min_level, encounters.method, encounters.condition
                 FROM pokemon
                 INNER JOIN encounters ON pokemon.id = encounters.pokemon_id
                 WHERE encounters.game_id = 'sapphire';''')
     
-    c.execute('''CREATE VIEW pokemon_emerald AS
+    c.execute('''CREATE VIEW encounters_emerald AS
                 SELECT pokemon.id, pokemon.name, encounters.location_id, encounters.chance, encounters.max_level, encounters.min_level, encounters.method, encounters.condition
                 FROM pokemon
                 INNER JOIN encounters ON pokemon.id = encounters.pokemon_id
                 WHERE encounters.game_id = 'emerald';''')
     
-    c.execute('''CREATE VIEW pokemon_firered AS
+    c.execute('''CREATE VIEW encounters_firered AS
                 SELECT pokemon.id, pokemon.name, encounters.location_id, encounters.chance, encounters.max_level, encounters.min_level, encounters.method, encounters.condition
                 FROM pokemon
                 INNER JOIN encounters ON pokemon.id = encounters.pokemon_id
                 WHERE encounters.game_id = 'firered';''')
 
-    c.execute('''CREATE VIEW pokemon_leafgreen AS
+    c.execute('''CREATE VIEW encounters_leafgreen AS
                 SELECT pokemon.id, pokemon.name, encounters.location_id, encounters.chance, encounters.max_level, encounters.min_level, encounters.method, encounters.condition
                 FROM pokemon
                 INNER JOIN encounters ON pokemon.id = encounters.pokemon_id
                 WHERE encounters.game_id = 'leafgreen';''')
     
+    # Drop pokemon per game views
+    c.execute('''DROP VIEW IF EXISTS version_exclusive_pokemon_frlg''')
+    c.execute('''DROP VIEW IF EXISTS version_exclusive_pokemon_rse''')
+    c.execute('''DROP VIEW IF EXISTS version_exclusive_pokemon''')
+
+    # Create version exclusive pokemon view
+    c.execute('''CREATE VIEW version_exclusive_pokemon_rse AS
+                SELECT pokemon_id, game_id
+                FROM pokemon_games
+                WHERE pokemon_games.game_id IN ('ruby', 'sapphire', 'emerald')
+                GROUP BY pokemon_id
+                HAVING COUNT(pokemon_id) = 1;''')
+    
+    c.execute('''CREATE VIEW version_exclusive_pokemon_frlg AS
+                SELECT pokemon_id, game_id
+                FROM pokemon_games
+                WHERE pokemon_games.game_id IN ('firered', 'leafgreen')
+                GROUP BY pokemon_id
+                HAVING COUNT(pokemon_id) = 1;''')
+    
+    c.execute('''CREATE VIEW version_exclusive_pokemon AS
+                SELECT pokemon_id, game_id
+                FROM pokemon_games
+                GROUP BY pokemon_id
+                HAVING COUNT(pokemon_id) = 1;''')
+
     conn.commit()
 
     return
@@ -377,17 +398,24 @@ def compose_db(conn):
         insert_pokemon(conn, i)
         insert_encounters(conn, i)
 
+    # Delete duplicate pokemon_games
+    c = conn.cursor()
+    c.execute('''DELETE FROM pokemon_games
+                WHERE rowid NOT IN (SELECT min(rowid)
+                                    FROM pokemon_games
+                                    GROUP BY pokemon_id, game_id);''')
+
     return
 
 ### Main ###
 
 if __name__ == '__main__':
+    # Initial Setup
     # compose_offline_api([False, False, False])
 
     # SQLite
     conn = create_connection('db/sed.db')
-    # setup_db(conn)
-    # compose_db(conn)
+    #setup_db(conn)
     create_views(conn)
 
     conn.close()
