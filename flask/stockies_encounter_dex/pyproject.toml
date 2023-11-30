@@ -1,0 +1,11 @@
+[project]
+name = "stockies_encounter_dex"
+version = "0.1.0"
+description = "Stockie's Encounter Dex."
+dependencies = [
+    "flask",
+]
+
+[build-system]
+requires = ["flit_core<4"]
+build-backend = "flit_core.buildapi"
