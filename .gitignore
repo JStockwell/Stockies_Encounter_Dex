@@ -174,3 +174,6 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# Py Env
+sedenv/

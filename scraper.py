@@ -1,4 +1,4 @@
-import requests, json, time, sqlite3, csv
+import requests, json, time, sqlite3, csv, os
 
 from sqlite3 import Error
 
@@ -8,6 +8,7 @@ start_time = time.time()
 
 BASE_URL = 'https://pokeapi.co/api/v2/'
 OFFLINE_MODE = True
+FLASK_MODE = True
 
 pokedex_dict = {}
 gamelist = ['ruby', 'sapphire', 'emerald', 'firered', 'leafgreen', 'colosseum', 'xd']
@@ -96,21 +97,21 @@ def setup_db(conn):
 def get_requests(pokemon_id, flags = [True, True, True]):
     if flags[0]:
         request_pokemon = requests.get(BASE_URL + f'pokemon/{pokemon_id}').json()
-        with open(f'requests/pokemon/{pokemon_id}.json', 'w') as outfile:
+        with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\requests\\pokemon\\{pokemon_id}.json', 'w') as outfile:
             json.dump(request_pokemon, outfile)
 
         print(f'Pokemon {request_pokemon["name"]} done at {time.time() - start_time} seconds')
 
     if flags[1]:
         request_encounters = requests.get(BASE_URL + f'pokemon/{pokemon_id}/encounters').json()
-        with open(f'requests/encounters/{pokemon_id}.json', 'w') as outfile:
+        with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\requests\\encounters\\{pokemon_id}.json', 'w') as outfile:
             json.dump(request_encounters, outfile)
 
         print(f'Encounters {pokemon_id} done at {time.time() - start_time} seconds')
 
     if flags[2]:
         request_pokemon_species = requests.get(BASE_URL + f'pokemon-species/{pokemon_id}').json()
-        with open(f'requests/pokemon_species/{pokemon_id}.json', 'w') as outfile:
+        with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\requests\\pokemon_species\\{pokemon_id}.json', 'w') as outfile:
             json.dump(request_pokemon_species, outfile)
 
         print(f'Pokemon Species {pokemon_id} done at {time.time() - start_time} seconds')
@@ -125,10 +126,10 @@ def get_pokemon_data_json(pokemon_id):
     result_set = {}
     
     if OFFLINE_MODE:
-        with open(f'requests/pokemon/{pokemon_id}.json') as json_file:
+        with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\requests\\pokemon\\{pokemon_id}.json') as json_file:
             request_pokemon = json.load(json_file)
 
-        with open(f'requests/encounters/{pokemon_id}.json') as json_file:
+        with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\requests\\encounters\\{pokemon_id}.json') as json_file:
             request_encounters = json.load(json_file)
 
     else:
@@ -213,10 +214,10 @@ def insert_pokemon(conn, pokemon_id):
     pokemon = [pokemon_id, '', '']
 
     if OFFLINE_MODE:
-        with open(f'requests/pokemon/{pokemon_id}.json') as json_file:
+        with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\requests\\pokemon\\{pokemon_id}.json') as json_file:
             request_pokemon = json.load(json_file)
 
-        with open(f'requests/pokemon_species/{pokemon_id}.json') as json_file:
+        with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\requests\\pokemon_species\\{pokemon_id}.json') as json_file:
             request_pokemon_species = json.load(json_file)
         
     else:
@@ -252,7 +253,7 @@ def insert_encounters(conn, pokemon_id):
     c = conn.cursor()
 
     if OFFLINE_MODE:
-        with open(f'requests/encounters/{pokemon_id}.json') as json_file:
+        with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\requests\\encounters\\{pokemon_id}.json') as json_file:
             request_encounters = json.load(json_file)
 
     else:
@@ -398,7 +399,7 @@ def remove_duplicates(appearences):
 def generate_colosseum_list():
     pokemon_colosseum = []
 
-    with open('input/pokemon_colosseum.csv', newline='') as csvfile:
+    with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\input\\pokemon_colosseum.csv', newline='') as csvfile:
         reader = csv.reader(csvfile, delimiter=' ', quotechar='|')
         for row in reader:
             pokemon_colosseum.append(row[0])
@@ -410,7 +411,7 @@ def generate_colosseum_list():
 def generate_xd_list():
     pokemon_xd = []
 
-    with open('input/pokemon_xd.csv', newline='') as csvfile:
+    with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\input\\pokemon_xd.csv', newline='') as csvfile:
         reader = csv.reader(csvfile, delimiter=' ', quotechar='|')
         for row in reader:
             pokemon_xd.append(row[0])
@@ -432,7 +433,7 @@ def compose_test():
         pokemon_data = get_pokemon_data_json(i)
         test_pokedex[pokemon_data[0]] = pokemon_data[1]
 
-    with open('output/test.json', 'w') as outfile:
+    with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\output\\test.json', 'w') as outfile:
         json.dump(test_pokedex, outfile)
 
     print(test_pokedex)
@@ -444,7 +445,7 @@ def compose_pokedex():
         pokemon_data = get_pokemon_data_json(i)
         pokedex[pokemon_data[0]] = pokemon_data[1]
 
-    with open('output/pokedex.json', 'w') as outfile:
+    with open(f'{os.path.abspath("scraper.py").replace("flask\\scraper.py","")}\\output\\pokedex.json', 'w') as outfile:
         json.dump(pokedex, outfile)
 
 def compose_db(conn):
@@ -463,17 +464,25 @@ def compose_db(conn):
 
 ### Main ###
 
-if __name__ == '__main__':
+def setup_encounter_dex(FLASK_MODE = True):
+    start_time = time.time()
+
     # Initial Setup
     # compose_offline_api([False, False, False])
+    global pokemon_colosseum, pokemon_xd
+
     pokemon_colosseum = generate_colosseum_list()
     pokemon_xd = generate_xd_list()
 
     # SQLite
-    conn = create_connection('db/sed.db')
+    if FLASK_MODE:
+        print(f'{os.path.abspath("scraper.py").replace("flask","")}\\instance\\stockies_encounter_dex.sqlite')
+        conn = create_connection(f'{os.path.abspath("scraper.py").replace("scraper.py","")}\\instance\\stockies_encounter_dex.sqlite')
+    else:
+        conn = create_connection('db/sed.db')
 
-    # setup_db(conn)
-    # create_views(conn)
+    setup_db(conn)
+    create_views(conn)
 
     # ruby_list = conn.execute('''SELECT * FROM encounters_ruby''').fetchall()
 
@@ -484,3 +493,6 @@ if __name__ == '__main__':
     # compose_pokedex()
 
     print("--- %s seconds ---" % (time.time() - start_time))
+
+if __name__ == '__main__':
+    setup_encounter_dex(False)
