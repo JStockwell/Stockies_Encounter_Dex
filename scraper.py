@@ -295,6 +295,50 @@ def insert_encounters(conn, pokemon_id):
     print(f'Locations inserted at {time.time() - start_time} seconds')
     return
 
+def create_views(conn):
+    c = conn.cursor()
+
+    c.execute('''DROP VIEW IF EXISTS pokemon_ruby''')
+    c.execute('''DROP VIEW IF EXISTS pokemon_sapphire''')
+    c.execute('''DROP VIEW IF EXISTS pokemon_emerald''')
+    c.execute('''DROP VIEW IF EXISTS pokemon_firered''')
+    c.execute('''DROP VIEW IF EXISTS pokemon_leafgreen''')
+
+    # Create views
+    c.execute('''CREATE VIEW pokemon_ruby AS
+                SELECT pokemon.id, pokemon.name, encounters.location_id, encounters.chance, encounters.max_level, encounters.min_level, encounters.method, encounters.condition
+                FROM pokemon
+                INNER JOIN encounters ON pokemon.id = encounters.pokemon_id
+                WHERE encounters.game_id = 'ruby';''')
+    
+    c.execute('''CREATE VIEW pokemon_sapphire AS
+                SELECT pokemon.id, pokemon.name, encounters.location_id, encounters.chance, encounters.max_level, encounters.min_level, encounters.method, encounters.condition
+                FROM pokemon
+                INNER JOIN encounters ON pokemon.id = encounters.pokemon_id
+                WHERE encounters.game_id = 'sapphire';''')
+    
+    c.execute('''CREATE VIEW pokemon_emerald AS
+                SELECT pokemon.id, pokemon.name, encounters.location_id, encounters.chance, encounters.max_level, encounters.min_level, encounters.method, encounters.condition
+                FROM pokemon
+                INNER JOIN encounters ON pokemon.id = encounters.pokemon_id
+                WHERE encounters.game_id = 'emerald';''')
+    
+    c.execute('''CREATE VIEW pokemon_firered AS
+                SELECT pokemon.id, pokemon.name, encounters.location_id, encounters.chance, encounters.max_level, encounters.min_level, encounters.method, encounters.condition
+                FROM pokemon
+                INNER JOIN encounters ON pokemon.id = encounters.pokemon_id
+                WHERE encounters.game_id = 'firered';''')
+
+    c.execute('''CREATE VIEW pokemon_leafgreen AS
+                SELECT pokemon.id, pokemon.name, encounters.location_id, encounters.chance, encounters.max_level, encounters.min_level, encounters.method, encounters.condition
+                FROM pokemon
+                INNER JOIN encounters ON pokemon.id = encounters.pokemon_id
+                WHERE encounters.game_id = 'leafgreen';''')
+    
+    conn.commit()
+
+    return
+
 ### Auxiliary Funtions ###
 
 def remove_duplicates(appearences):
@@ -328,6 +372,13 @@ def compose_pokedex():
     with open('output/pokedex.json', 'w') as outfile:
         json.dump(pokedex, outfile)
 
+def compose_db(conn):
+    for i in range(1, 387):
+        insert_pokemon(conn, i)
+        insert_encounters(conn, i)
+
+    return
+
 ### Main ###
 
 if __name__ == '__main__':
@@ -335,11 +386,9 @@ if __name__ == '__main__':
 
     # SQLite
     conn = create_connection('db/sed.db')
-    setup_db(conn)
-
-    for i in range(1, 387):
-        insert_pokemon(conn, i)
-        insert_encounters(conn, i)
+    # setup_db(conn)
+    # compose_db(conn)
+    create_views(conn)
 
     conn.close()
 
