@@ -1,4 +1,4 @@
-import requests, json, time, sqlite3
+import requests, json, time, sqlite3, csv
 
 from sqlite3 import Error
 
@@ -10,7 +10,9 @@ BASE_URL = 'https://pokeapi.co/api/v2/'
 OFFLINE_MODE = True
 
 pokedex_dict = {}
-gamelist = ['ruby', 'sapphire', 'emerald', 'firered', 'leafgreen']
+gamelist = ['ruby', 'sapphire', 'emerald', 'firered', 'leafgreen', 'colosseum', 'xd']
+pokemon_colosseum = []
+pokemon_xd = []
 
 ### DB Functions ###
 
@@ -217,7 +219,6 @@ def insert_pokemon(conn, pokemon_id):
         with open(f'requests/pokemon_species/{pokemon_id}.json') as json_file:
             request_pokemon_species = json.load(json_file)
         
-
     else:
         request_pokemon = requests.get(BASE_URL + f'pokemon/{pokemon_id}').json()
         request_pokemon_species = requests.get(BASE_URL + f'pokemon-species/{pokemon_id}').json()
@@ -233,6 +234,14 @@ def insert_pokemon(conn, pokemon_id):
 
     c.execute('''INSERT INTO pokemon (id, name, base_form)
                 VALUES (?, ?, ?)''', pokemon)
+    
+    if str(pokemon_id) in pokemon_colosseum:
+        c.execute('''INSERT INTO pokemon_games (pokemon_id, game_id)
+                    VALUES (?, ?)''', (pokemon_id, 'colosseum'))
+        
+    if str(pokemon_id) in pokemon_xd:
+        c.execute('''INSERT INTO pokemon_games (pokemon_id, game_id)
+                    VALUES (?, ?)''', (pokemon_id, 'xd'))
 
     conn.commit()
 
@@ -334,27 +343,48 @@ def create_views(conn):
     c.execute('''DROP VIEW IF EXISTS version_exclusive_pokemon_frlg''')
     c.execute('''DROP VIEW IF EXISTS version_exclusive_pokemon_rse''')
     c.execute('''DROP VIEW IF EXISTS version_exclusive_pokemon''')
+    c.execute('''DROP VIEW IF EXISTS version_exclusive_base_form_pokemon''')
 
     # Create version exclusive pokemon view
     c.execute('''CREATE VIEW version_exclusive_pokemon_rse AS
-                SELECT pokemon_id, game_id
+                SELECT pokemon_id, pokemon.name, game_id
                 FROM pokemon_games
+                INNER JOIN pokemon ON pokemon_games.pokemon_id = pokemon.id
                 WHERE pokemon_games.game_id IN ('ruby', 'sapphire', 'emerald')
                 GROUP BY pokemon_id
                 HAVING COUNT(pokemon_id) = 1;''')
     
     c.execute('''CREATE VIEW version_exclusive_pokemon_frlg AS
-                SELECT pokemon_id, game_id
+                SELECT pokemon_id, pokemon.name, game_id
                 FROM pokemon_games
+                INNER JOIN pokemon ON pokemon_games.pokemon_id = pokemon.id
                 WHERE pokemon_games.game_id IN ('firered', 'leafgreen')
                 GROUP BY pokemon_id
                 HAVING COUNT(pokemon_id) = 1;''')
     
     c.execute('''CREATE VIEW version_exclusive_pokemon AS
-                SELECT pokemon_id, game_id
+                SELECT pokemon_id, pokemon.name, game_id
                 FROM pokemon_games
+                INNER JOIN pokemon ON pokemon_games.pokemon_id = pokemon.id
                 GROUP BY pokemon_id
                 HAVING COUNT(pokemon_id) = 1;''')
+    
+    c.execute('''CREATE VIEW version_exclusive_base_form_pokemon AS
+                SELECT pokemon_id, pokemon.name, game_id
+                FROM pokemon_games
+                INNER JOIN pokemon ON pokemon_games.pokemon_id = pokemon.id
+                WHERE pokemon.base_form = ""
+                GROUP BY pokemon_id
+                HAVING COUNT(pokemon_id) = 1;''')
+    
+    # Drop catchable pokemon view
+    c.execute('''DROP VIEW IF EXISTS catchable_pokemon''')
+
+    # Create catchable pokemon view
+    c.execute('''CREATE VIEW catchable_pokemon AS
+                SELECT DISTINCT pokemon.id, pokemon.name
+                FROM pokemon
+                INNER JOIN encounters ON pokemon.id = encounters.pokemon_id;''')
 
     conn.commit()
 
@@ -364,6 +394,30 @@ def create_views(conn):
 
 def remove_duplicates(appearences):
         return list(dict.fromkeys(appearences))
+
+def generate_colosseum_list():
+    pokemon_colosseum = []
+
+    with open('input/pokemon_colosseum.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+        for row in reader:
+            pokemon_colosseum.append(row[0])
+
+    pokemon_colosseum.remove('pokemon_id')
+
+    return pokemon_colosseum
+
+def generate_xd_list():
+    pokemon_xd = []
+
+    with open('input/pokemon_xd.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+        for row in reader:
+            pokemon_xd.append(row[0])
+
+    pokemon_xd.remove('pokemon_id')
+
+    return pokemon_xd
 
 ### Execution Functions ###
 
@@ -412,11 +466,16 @@ def compose_db(conn):
 if __name__ == '__main__':
     # Initial Setup
     # compose_offline_api([False, False, False])
+    pokemon_colosseum = generate_colosseum_list()
+    pokemon_xd = generate_xd_list()
 
     # SQLite
     conn = create_connection('db/sed.db')
-    #setup_db(conn)
-    create_views(conn)
+
+    # setup_db(conn)
+    # create_views(conn)
+
+    # ruby_list = conn.execute('''SELECT * FROM encounters_ruby''').fetchall()
 
     conn.close()
 
