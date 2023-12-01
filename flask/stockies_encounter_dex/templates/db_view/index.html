@@ -1,13 +1,72 @@
 {% extends 'base.html' %}
 
+
+
 {% block header %}
     <h1>{% block title %}Database Views{% endblock %}</h1>
 {% endblock %}
 
 {% block content %}
+    <script>
+        function encountersTableSearchPkmn() {
+            var input, filter, table, tr, td, i , txtValue;
+            input = document.getElementById("searchInput");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("encountersTable");
+            tr = table.getElementsByTagName("tr");
+        
+            // Loop through all table rows, and hide those who don't match the search query
+            for (i = 0; i < tr.length; i++){
+                td = tr[i].getElementsByTagName("td")[0];
+                if (td){
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1){
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        function encountersTableSearchGame() {
+            var input, filter, table, tr, td, i , txtValue;
+            input = document.getElementById("gameSelect");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("encountersTable");
+            tr = table.getElementsByTagName("tr");
+        
+            // Loop through all table rows, and hide those who don't match the search query
+            if (filter == "ALL") return;
+            else {
+                console.log(input.value);
+                for (i = 0; i < tr.length; i++){
+                    td = tr[i].getElementsByTagName("td")[1];
+                    if (td){
+                        txtValue = td.textContent || td.innerText;
+                        if (txtValue.toUpperCase().indexOf(filter) > -1){
+                            tr[i].style.display = "";
+                        } else {
+                            tr[i].style.display = "none";
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <h2>Encounters</h2>
-    <table>
-        <tr>
+
+    <input type="text" id="searchInput" onkeyup="encountersTableSearchPkmn()" placeholder="Search for pokemon..">
+    <select id="gameSelect" onchange="encountersTableSearchGame()">
+        <option value="all">All Games</option>
+        {% for game in games %}
+            <option value="{{ game['id'] }}">{{ game['name'] }}</option>
+        {% endfor %}
+    </select>
+
+    <table id="encountersTable">
+        <tr class="header">
             <th>Pokemon</th>
             <th>Game</th>
             <th>Location</th>

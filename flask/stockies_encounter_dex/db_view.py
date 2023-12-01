@@ -18,4 +18,8 @@ def index():
         ' ORDER BY pokemon_id ASC'
     ).fetchall()
 
-    return render_template('db_view/index.html', encounters=encounters)
+    games = db.execute(
+        'SELECT * FROM games'
+    ).fetchall()
+
+    return render_template('db_view/index.html', encounters=encounters, games=games)
