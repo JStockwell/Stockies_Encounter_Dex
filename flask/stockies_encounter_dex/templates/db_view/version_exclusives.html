@@ -1,0 +1,112 @@
+{% extends 'db_view/index.html' %}
+
+{% block content %}
+    <script>
+        function filterSelect() {
+            var input = document.getElementById("filters");
+            filter = input.value;
+
+            if (filter == "none") {
+                document.getElementById("searchInput").style.display = "none";
+                document.getElementById("gameSelect").style.display = "none";
+            }
+
+            else if (filter == "searchInput") {
+                document.getElementById("searchInput").style.display = "block";
+                document.getElementById("gameSelect").style.display = "none";
+            }
+
+            else if (filter == "gameSelect") {
+                document.getElementById("searchInput").style.display = "none";
+                document.getElementById("gameSelect").style.display = "block";
+            }
+
+            else {
+                document.getElementById("searchInput").style.display = "none";
+                document.getElementById("gameSelect").style.display = "none";
+            }
+        }
+        
+        function encountersTableSearchPkmn() {
+            var input, filter, table, tr, td, i , txtValue;
+            input = document.getElementById("searchInput");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("databaseTable");
+            tr = table.getElementsByTagName("tr");
+        
+            // Loop through all table rows, and hide those who don't match the search query
+            for (i = 0; i < tr.length; i++){
+                td = tr[i].getElementsByTagName("td")[1];
+                if (td){
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1){
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        function encountersTableSearchGame() {
+            var input, filter, table, tr, td, i , txtValue;
+            input = document.getElementById("gameSelect");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("databaseTable");
+            tr = table.getElementsByTagName("tr");
+        
+            // Loop through all table rows, and hide those who don't match the search query
+            if (filter == "ALL") {
+                for (i = 0; i < tr.length; i++){
+                    tr[i].style.display = "";
+                }
+            }
+            
+            else {
+                for (i = 0; i < tr.length; i++){
+                    td = tr[i].getElementsByTagName("td")[2];
+                    if (td){
+                        txtValue = td.textContent || td.innerText;
+                        if (txtValue.toUpperCase().indexOf(filter) > -1){
+                            tr[i].style.display = "";
+                        } else {
+                            tr[i].style.display = "none";
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <select class="filters" id="filters" onchange="filterSelect()">
+        <option value="none">Select a filter</option>
+        <option value="searchInput">Filter By Pokemon</option>
+        <option value="gameSelect">Filter By Game</option>
+    </select>
+
+    <br>
+
+    <input type="text" class="searchInput" id="searchInput" onkeyup="encountersTableSearchPkmn()" placeholder="Search for pokemon.." style="display: None;">
+    <select class="gameSelect" id="gameSelect" onchange="encountersTableSearchGame()" style="display: None;">
+        <option value="all">All Games</option>
+        {% for game in data[1] %}
+            <option value="{{ game['name'] }}">{{ game['name'] }}</option>
+        {% endfor %}
+    </select>
+
+    <table class="databaseTable" id="databaseTable" style="margin-left: auto;margin-right: auto;">
+        <tr class="header">
+            <th>Pokedex No.</th>
+            <th>Pokemon</th>
+            <th>Game</th>
+        </tr>
+    
+        {% for pokemon in data[0] %}
+            <tr>
+                <td>{{ pokemon['pokemon_id'] }}</td>
+                <td>{{ pokemon['name'] }}</td>
+                <td>{{ pokemon['game_id'] }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

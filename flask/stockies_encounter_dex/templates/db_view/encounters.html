@@ -1,0 +1,95 @@
+{% extends 'db_view/index.html' %}
+
+{% block content %}
+    <script>
+        function encountersTableSearchPkmn() {
+            var input, filter, table, tr, td, i , txtValue;
+            input = document.getElementById("searchInput");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("databaseTable");
+            tr = table.getElementsByTagName("tr");
+        
+            // Loop through all table rows, and hide those who don't match the search query
+            for (i = 0; i < tr.length; i++){
+                td = tr[i].getElementsByTagName("td")[1];
+                if (td){
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1){
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        function encountersTableSearchGame() {
+            var input, filter, table, tr, td, i , txtValue;
+            input = document.getElementById("gameSelect");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("databaseTable");
+            tr = table.getElementsByTagName("tr");
+        
+            // Loop through all table rows, and hide those who don't match the search query
+            if (filter == "ALL") {
+                for (i = 0; i < tr.length; i++){
+                    tr[i].style.display = "";
+                }
+            }
+            
+            else {
+                for (i = 0; i < tr.length; i++){
+                    td = tr[i].getElementsByTagName("td")[2];
+                    if (td){
+                        txtValue = td.textContent || td.innerText;
+                        if (txtValue.toUpperCase().indexOf(filter) > -1){
+                            tr[i].style.display = "";
+                        } else {
+                            tr[i].style.display = "none";
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <input type="text" id="searchInput" onkeyup="encountersTableSearchPkmn()" placeholder="Search for pokemon..">
+    <select id="gameSelect" onchange="encountersTableSearchGame()">
+        <option value="all">All Games</option>
+        {% for game in data[1] %}
+            {% if game['name'] != 'colosseum' %}
+                {% if game['name'] != 'xd' %}
+                    <option value="{{ game['name'] }}">{{ game['name'] }}</option>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+    </select>
+
+    <table id="databaseTable" class="databaseTable">
+        <tr class="header">
+            <th>Pokedex No.</th>
+            <th>Pokemon</th>
+            <th>Game</th>
+            <th>Location</th>
+            <th>Chance</th>
+            <th>Min Level</th>
+            <th>Max Level</th>
+            <th>Method</th>
+            <th>Condition</th>
+        </tr>
+    
+        {% for encounter in data[0] %}
+            <tr>
+                <td>{{ encounter['pokemon_id'] }}</td>
+                <td>{{ encounter['name'] }}</td>
+                <td>{{ encounter['game_id'] }}</td>
+                <td>{{ encounter['location_id'] }}</td>
+                <td>{{ encounter['chance'] }}</td>
+                <td>{{ encounter['min_level'] }}</td>
+                <td>{{ encounter['max_level'] }}</td>
+                <td>{{ encounter['method'] }}</td>
+                <td>{{ encounter['condition'] }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}
