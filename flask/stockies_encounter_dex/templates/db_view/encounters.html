@@ -2,6 +2,22 @@
 
 {% block content %}
     <script>
+
+        function filterSelect() {
+            var list_filter_id = ["searchInput", "gameSelect"]
+            var input = document.getElementById("filters");
+            filter = input.value;
+
+            for (i = 0; i < list_filter_id.length; i++) {
+                if (list_filter_id[i] == filter) {
+                    document.getElementById(list_filter_id[i]).style.display = "block";
+                }
+                else {
+                    document.getElementById(list_filter_id[i]).style.display = "none";
+                }
+            }
+        }
+
         function encountersTableSearchPkmn() {
             var input, filter, table, tr, td, i , txtValue;
             input = document.getElementById("searchInput");
@@ -53,15 +69,19 @@
         }
     </script>
 
-    <input type="text" id="searchInput" onkeyup="encountersTableSearchPkmn()" placeholder="Search for pokemon..">
-    <select id="gameSelect" onchange="encountersTableSearchGame()">
+    <select class="filters" id="filters" onchange="filterSelect()">
+        <option value="none">Select a filter</option>
+        <option value="searchInput">Filter By Pokemon</option>
+        <option value="gameSelect">Filter By Game</option>
+    </select>
+
+    <br>
+
+    <input type="text" class="searchInput" id="searchInput" onkeyup="encountersTableSearchPkmn()" placeholder="Search for pokemon.." style="display: None;">
+    <select class="gameSelect" id="gameSelect" onchange="encountersTableSearchGame()" style="display: None;">
         <option value="all">All Games</option>
         {% for game in data[1] %}
-            {% if game['name'] != 'colosseum' %}
-                {% if game['name'] != 'xd' %}
-                    <option value="{{ game['name'] }}">{{ game['name'] }}</option>
-                {% endif %}
-            {% endif %}
+            <option value="{{ game['name'] }}">{{ game['name'] }}</option>
         {% endfor %}
     </select>
 

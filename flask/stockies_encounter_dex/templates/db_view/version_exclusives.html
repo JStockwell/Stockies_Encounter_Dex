@@ -2,28 +2,19 @@
 
 {% block content %}
     <script>
+        
         function filterSelect() {
+            var list_filter_id = ["searchInput", "gameSelect"]
             var input = document.getElementById("filters");
             filter = input.value;
 
-            if (filter == "none") {
-                document.getElementById("searchInput").style.display = "none";
-                document.getElementById("gameSelect").style.display = "none";
-            }
-
-            else if (filter == "searchInput") {
-                document.getElementById("searchInput").style.display = "block";
-                document.getElementById("gameSelect").style.display = "none";
-            }
-
-            else if (filter == "gameSelect") {
-                document.getElementById("searchInput").style.display = "none";
-                document.getElementById("gameSelect").style.display = "block";
-            }
-
-            else {
-                document.getElementById("searchInput").style.display = "none";
-                document.getElementById("gameSelect").style.display = "none";
+            for (i = 0; i < list_filter_id.length; i++) {
+                if (list_filter_id[i] == filter) {
+                    document.getElementById(list_filter_id[i]).style.display = "block";
+                }
+                else {
+                    document.getElementById(list_filter_id[i]).style.display = "none";
+                }
             }
         }
         
